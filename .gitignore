@@ -1,0 +1,14 @@
+node_modules/
+playwright-report/
+test-results/
+dist/
+.node/
+
+.auth/*.json
+
+# Local env overrides with secrets (keep template .env files)
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
