@@ -1,0 +1,66 @@
+name: Smoke Tests
+
+on:
+  push:
+    branches:
+      - main
+
+  # Triggered manually or from a deployment pipeline via GitHub API
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment to run smoke tests against'
+        required: false
+        default: 'qa'
+        type: choice
+        options:
+          - qa
+          - dev
+          - prod
+
+  # Triggered via webhook from an external deployment pipeline:
+  # POST /repos/Swarnanil92/Test-Automation-Framework/dispatches
+  # Body: { "event_type": "qa-deployment-complete", "client_payload": { "environment": "qa" } }
+  repository_dispatch:
+    types:
+      - qa-deployment-complete
+
+jobs:
+  smoke:
+    name: Smoke Tests — ${{ github.event.inputs.environment || github.event.client_payload.environment || 'qa' }}
+    runs-on: ubuntu-latest
+
+    environment: ${{ github.event.inputs.environment || github.event.client_payload.environment || 'qa' }}
+
+    env:
+      ENV: ${{ github.event.inputs.environment || github.event.client_payload.environment || 'qa' }}
+      BASE_URL: ${{ secrets.BASE_URL }}
+      HEADLESS: 'true'
+      CI: 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        run: npm run test:smoke
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 14
